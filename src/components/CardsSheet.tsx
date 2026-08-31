@@ -9,6 +9,7 @@ import {
   inr,
   thirtyPct,
   utilization,
+  toOrdinal,
   type CreditCard,
 } from "@/lib/finance";
 import { Button } from "@/components/ui/button";
@@ -191,7 +192,7 @@ export function CardsSheet({ cards }: { cards: CreditCard[] }) {
                       />
                     ) : (
                       <div className="h-8 flex items-center justify-center font-mono text-sm text-foreground">
-                        {c.bill_generation_day}
+                        {toOrdinal(c.bill_generation_day)}
                       </div>
                     )}
                   </td>
@@ -220,7 +221,7 @@ export function CardsSheet({ cards }: { cards: CreditCard[] }) {
                       />
                     ) : (
                       <div className="h-8 flex items-center justify-center font-mono text-sm text-foreground">
-                        {c.last_payment_day ?? "-"}
+                        {c.last_payment_day ? toOrdinal(c.last_payment_day) : "-"}
                       </div>
                     )}
                   </td>
