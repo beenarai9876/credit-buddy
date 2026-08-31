@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Landmark, Plus, Trash2, Wallet } from "lucide-react";
+import { Landmark, Plus, Trash2, Wallet, Edit2, Check } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { inr, type WalletAccount } from "@/lib/finance";
@@ -11,6 +11,7 @@ export function WalletPanel({ accounts }: { accounts: WalletAccount[] }) {
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [kind, setKind] = useState<"bank" | "cash">("bank");
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: ["wallet_accounts"] });
@@ -33,11 +34,17 @@ export function WalletPanel({ accounts }: { accounts: WalletAccount[] }) {
     onError: (e) => toast.error(e.message),
   });
 
-  const updateBalance = useMutation({
-    mutationFn: async ({ id, balance }: { id: string; balance: number }) => {
+  const updateAccount = useMutation({
+    mutationFn: async ({
+      id,
+      patch,
+    }: {
+      id: string;
+      patch: Partial<WalletAccount>;
+    }) => {
       const { error } = await supabase
         .from("wallet_accounts")
-        .update({ balance })
+        .update(patch)
         .eq("id", id);
       if (error) throw error;
     },
@@ -90,42 +97,89 @@ export function WalletPanel({ accounts }: { accounts: WalletAccount[] }) {
           <h3 className="font-display text-sm font-semibold">My Accounts</h3>
         </div>
         <ul className="divide-y divide-border">
-          {accounts.map((a) => (
-            <li key={a.id} className="flex items-center gap-3 px-4 py-2.5">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground">
-                {a.kind === "bank" ? (
-                  <Landmark className="h-4 w-4" />
+          {accounts.map((a) => {
+            const isEditing = editingId === a.id;
+            return (
+              <li key={a.id} className="flex items-center gap-3 px-4 py-2.5">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground">
+                  {a.kind === "bank" ? (
+                    <Landmark className="h-4 w-4" />
+                  ) : (
+                    <Wallet className="h-4 w-4" />
+                  )}
+                </span>
+                <div className="min-w-0 flex-1">
+                  {isEditing ? (
+                    <Input
+                      key={`${a.id}-n-${a.name}`}
+                      defaultValue={a.name}
+                      onBlur={(e) => {
+                        if (e.target.value.trim() && e.target.value !== a.name)
+                          updateAccount.mutate({
+                            id: a.id,
+                            patch: { name: e.target.value.trim() },
+                          });
+                      }}
+                      className="h-8 max-w-[200px] bg-secondary text-sm font-medium focus:bg-background"
+                      autoFocus
+                    />
+                  ) : (
+                    <p className="truncate text-sm font-medium">{a.name}</p>
+                  )}
+                  <p className="text-xs capitalize text-muted-foreground">
+                    {a.kind}
+                  </p>
+                </div>
+                {isEditing ? (
+                  <Input
+                    key={`${a.id}-${a.balance}`}
+                    type="number"
+                    step="0.01"
+                    defaultValue={a.balance}
+                    onBlur={(e) => {
+                      const v = Number(e.target.value);
+                      if (Number.isFinite(v) && v !== a.balance)
+                        updateAccount.mutate({ id: a.id, patch: { balance: v } });
+                    }}
+                    className="h-8 w-32 bg-secondary text-right font-mono text-sm focus:bg-background"
+                  />
                 ) : (
-                  <Wallet className="h-4 w-4" />
+                  <div className="h-8 flex items-center justify-end px-3 font-mono text-sm text-foreground">
+                    {inr(a.balance)}
+                  </div>
                 )}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{a.name}</p>
-                <p className="text-xs capitalize text-muted-foreground">
-                  {a.kind}
-                </p>
-              </div>
-              <Input
-                key={`${a.id}-${a.balance}`}
-                type="number"
-                defaultValue={a.balance}
-                onBlur={(e) => {
-                  const v = Number(e.target.value);
-                  if (Number.isFinite(v) && v !== a.balance)
-                    updateBalance.mutate({ id: a.id, balance: v });
-                }}
-                className="h-8 w-32 bg-secondary text-right font-mono text-sm"
-              />
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                onClick={() => remove.mutate(a.id)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </li>
-          ))}
+                {isEditing ? (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-primary hover:text-primary-foreground hover:bg-primary"
+                    title="Save"
+                    onClick={() => setEditingId(null)}
+                  >
+                    <Check className="h-4 w-4" />
+                  </Button>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                    title="Edit"
+                    onClick={() => setEditingId(a.id)}
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                  onClick={() => remove.mutate(a.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </li>
+            );
+          })}
           {accounts.length === 0 && (
             <li className="px-4 py-6 text-center text-sm text-muted-foreground">
               No accounts yet — add your bank or cash below.

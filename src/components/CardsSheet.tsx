@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { CreditCard as CardIcon, History, Plus, Trash2 } from "lucide-react";
+import { CreditCard as CardIcon, History, Plus, Trash2, Edit2, Check } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -15,11 +15,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RecordPaymentDialog } from "@/components/RecordPaymentDialog";
 import { CardHistoryDialog } from "@/components/CardHistoryDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export function CardsSheet({ cards }: { cards: CreditCard[] }) {
   const queryClient = useQueryClient();
   const [payCard, setPayCard] = useState<CreditCard | null>(null);
   const [historyCard, setHistoryCard] = useState<CreditCard | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteCard, setDeleteCard] = useState<CreditCard | null>(null);
 
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: ["credit_cards"] });
@@ -30,15 +42,25 @@ export function CardsSheet({ cards }: { cards: CreditCard[] }) {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Not signed in");
-      const { error } = await supabase.from("credit_cards").insert({
-        user_id: user.id,
-        name: "New card",
-        credit_limit: 0,
-        bill_generation_day: 1,
-      });
+      const { data, error } = await supabase
+        .from("credit_cards")
+        .insert({
+          user_id: user.id,
+          name: "New card",
+          credit_limit: 0,
+          bill_generation_day: 1,
+        })
+        .select()
+        .single();
       if (error) throw error;
+      return data;
     },
-    onSuccess: invalidate,
+    onSuccess: (data) => {
+      invalidate();
+      if (data) {
+        setEditingId(data.id);
+      }
+    },
     onError: (e) => toast.error(e.message),
   });
 
@@ -99,7 +121,7 @@ export function CardsSheet({ cards }: { cards: CreditCard[] }) {
               <Th>Card Name</Th>
               <Th className="text-right">Limit</Th>
               <Th>Bill Gen. Day</Th>
-              <Th>Last Payment</Th>
+              <Th>Last Payment Day</Th>
               <Th className="text-right">Used Limit</Th>
               <Th className="text-right">Available</Th>
               <Th className="text-right">Bill Amount</Th>
@@ -109,67 +131,98 @@ export function CardsSheet({ cards }: { cards: CreditCard[] }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {cards.map((c) => {
+             {cards.map((c) => {
               const pct = utilization(c);
+              const isEditing = editingId === c.id;
               return (
                 <tr key={c.id} className="group">
                   <td className="px-3 py-2">
-                    <Input
-                      key={`${c.id}-n-${c.name}`}
-                      defaultValue={c.name}
-                      onBlur={(e) => {
-                        if (e.target.value.trim() && e.target.value !== c.name)
-                          update.mutate({
-                            id: c.id,
-                            patch: { name: e.target.value.trim() },
-                          });
-                      }}
-                      className="h-8 w-40 bg-transparent text-sm font-medium focus:bg-secondary"
-                    />
+                    {isEditing ? (
+                      <Input
+                        key={`${c.id}-n-${c.name}`}
+                        defaultValue={c.name}
+                        onBlur={(e) => {
+                          if (e.target.value.trim() && e.target.value !== c.name)
+                            update.mutate({
+                              id: c.id,
+                              patch: { name: e.target.value.trim() },
+                            });
+                        }}
+                        className="h-8 w-40 bg-transparent text-sm font-medium focus:bg-secondary"
+                        autoFocus
+                      />
+                    ) : (
+                      <div className="h-8 flex items-center px-3 text-sm font-medium text-foreground">
+                        {c.name}
+                      </div>
+                    )}
                   </td>
                   <td className="px-3 py-2">
-                    <NumCell
-                      value={c.credit_limit}
-                      onCommit={(v) =>
-                        update.mutate({ id: c.id, patch: { credit_limit: v } })
-                      }
-                    />
+                    {isEditing ? (
+                      <NumCell
+                        value={c.credit_limit}
+                        onCommit={(v) =>
+                          update.mutate({ id: c.id, patch: { credit_limit: v } })
+                        }
+                      />
+                    ) : (
+                      <div className="h-8 flex items-center justify-end px-3 font-mono text-sm text-foreground">
+                        {inr(c.credit_limit)}
+                      </div>
+                    )}
                   </td>
                   <td className="px-3 py-2">
-                    <Input
-                      key={`${c.id}-d-${c.bill_generation_day}`}
-                      type="number"
-                      min={1}
-                      max={31}
-                      defaultValue={c.bill_generation_day}
-                      onBlur={(e) => {
-                        const v = Math.round(Number(e.target.value));
-                        if (v >= 1 && v <= 31 && v !== c.bill_generation_day)
-                          update.mutate({
-                            id: c.id,
-                            patch: { bill_generation_day: v },
-                          });
-                      }}
-                      className="h-8 w-16 bg-transparent text-center font-mono text-sm focus:bg-secondary"
-                    />
+                    {isEditing ? (
+                      <Input
+                        key={`${c.id}-d-${c.bill_generation_day}`}
+                        type="number"
+                        min={1}
+                        max={31}
+                        defaultValue={c.bill_generation_day}
+                        onBlur={(e) => {
+                          const v = Math.round(Number(e.target.value));
+                          if (v >= 1 && v <= 31 && v !== c.bill_generation_day)
+                            update.mutate({
+                              id: c.id,
+                              patch: { bill_generation_day: v },
+                            });
+                        }}
+                        className="h-8 w-16 bg-transparent text-center font-mono text-sm focus:bg-secondary"
+                      />
+                    ) : (
+                      <div className="h-8 flex items-center justify-center font-mono text-sm text-foreground">
+                        {c.bill_generation_day}
+                      </div>
+                    )}
                   </td>
                   <td className="px-3 py-2">
-                    <Input
-                      key={`${c.id}-lp-${c.last_payment_date}`}
-                      type="date"
-                      defaultValue={c.last_payment_date ?? ""}
-                      onBlur={(e) => {
-                        if (e.target.value !== (c.last_payment_date ?? ""))
-                          update.mutate({
-                            id: c.id,
-                            patch: {
-                              last_payment_date: e.target.value || null,
-                            },
-                          });
-                      }}
-                      className="h-8 w-36 bg-transparent font-mono text-xs focus:bg-secondary"
-                      title={formatDate(c.last_payment_date)}
-                    />
+                    {isEditing ? (
+                      <Input
+                        key={`${c.id}-lp-${c.last_payment_day}`}
+                        type="number"
+                        min={1}
+                        max={31}
+                        defaultValue={c.last_payment_day ?? ""}
+                        onBlur={(e) => {
+                          const v = e.target.value ? Math.round(Number(e.target.value)) : null;
+                          if (v === null || (v >= 1 && v <= 31)) {
+                            if (v !== c.last_payment_day) {
+                              update.mutate({
+                                id: c.id,
+                                patch: {
+                                  last_payment_day: v,
+                                },
+                              });
+                            }
+                          }
+                        }}
+                        className="h-8 w-16 bg-transparent text-center font-mono text-sm focus:bg-secondary"
+                      />
+                    ) : (
+                      <div className="h-8 flex items-center justify-center font-mono text-sm text-foreground">
+                        {c.last_payment_day ?? "-"}
+                      </div>
+                    )}
                   </td>
                   <td className="px-3 py-2">
                     <NumCell
@@ -216,6 +269,27 @@ export function CardsSheet({ cards }: { cards: CreditCard[] }) {
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex items-center justify-end gap-1">
+                      {isEditing ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-primary hover:text-primary-foreground hover:bg-primary"
+                          title="Save"
+                          onClick={() => setEditingId(null)}
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                          title="Edit"
+                          onClick={() => setEditingId(c.id)}
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                      )}
                       <Button
                         variant="outline"
                         size="sm"
@@ -237,7 +311,7 @@ export function CardsSheet({ cards }: { cards: CreditCard[] }) {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                        onClick={() => remove.mutate(c.id)}
+                        onClick={() => setDeleteCard(c)}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -295,6 +369,33 @@ export function CardsSheet({ cards }: { cards: CreditCard[] }) {
         open={!!historyCard}
         onOpenChange={(o) => !o && setHistoryCard(null)}
       />
+
+      <AlertDialog open={!!deleteCard} onOpenChange={(o) => !o && setDeleteCard(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the card{" "}
+              <span className="font-semibold text-foreground">"{deleteCard?.name}"</span> and
+              all its historical bill payment records from the database.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deleteCard) {
+                  remove.mutate(deleteCard.id);
+                  setDeleteCard(null);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </section>
   );
 }
@@ -326,6 +427,7 @@ function NumCell({
         key={`${value}`}
         type="number"
         min="0"
+        step="0.01"
         defaultValue={value}
         onBlur={(e) => {
           const v = Number(e.target.value);

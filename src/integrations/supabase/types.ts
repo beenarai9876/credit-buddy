@@ -68,7 +68,7 @@ export type Database = {
           credit_limit: number
           current_bill_amount: number
           id: string
-          last_payment_date: string | null
+          last_payment_day: number | null
           name: string
           notes: string | null
           updated_at: string
@@ -81,7 +81,7 @@ export type Database = {
           credit_limit?: number
           current_bill_amount?: number
           id?: string
-          last_payment_date?: string | null
+          last_payment_day?: number | null
           name: string
           notes?: string | null
           updated_at?: string
@@ -94,7 +94,7 @@ export type Database = {
           credit_limit?: number
           current_bill_amount?: number
           id?: string
-          last_payment_date?: string | null
+          last_payment_day?: number | null
           name?: string
           notes?: string | null
           updated_at?: string

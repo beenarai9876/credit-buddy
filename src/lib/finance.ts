@@ -6,7 +6,7 @@ export type CreditCard = {
   bill_generation_day: number;
   used_limit: number;
   current_bill_amount: number;
-  last_payment_date: string | null;
+  last_payment_day: number | null;
   notes: string | null;
   created_at: string;
 };
@@ -36,7 +36,8 @@ export const inr = (n: number) =>
   new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(Number.isFinite(n) ? n : 0);
 
 export const availableLimit = (c: CreditCard) =>

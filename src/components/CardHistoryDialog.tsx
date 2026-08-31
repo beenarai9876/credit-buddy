@@ -119,6 +119,7 @@ export function CardHistoryDialog({
                       <Input
                         key={`${r.id}-b-${r.bill_amount}`}
                         type="number"
+                        step="0.01"
                         defaultValue={r.bill_amount}
                         onBlur={(e) => {
                           const v = Number(e.target.value);
@@ -133,6 +134,7 @@ export function CardHistoryDialog({
                       <Input
                         key={`${r.id}-a-${r.amount_paid}`}
                         type="number"
+                        step="0.01"
                         defaultValue={r.amount_paid}
                         onBlur={(e) => {
                           const v = Number(e.target.value);

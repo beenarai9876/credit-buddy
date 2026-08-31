@@ -61,7 +61,6 @@ export function RecordPaymentDialog({
       const { error: uerr } = await supabase
         .from("credit_cards")
         .update({
-          last_payment_date: paymentDate || null,
           current_bill_amount: Math.max(bill - paid, 0),
         })
         .eq("id", card.id);
@@ -113,6 +112,7 @@ export function RecordPaymentDialog({
               <Input
                 type="number"
                 min="0"
+                step="0.01"
                 value={billAmount}
                 onChange={(e) => setBillAmount(e.target.value)}
                 className="bg-secondary font-mono"
@@ -124,6 +124,7 @@ export function RecordPaymentDialog({
               <Input
                 type="number"
                 min="0"
+                step="0.01"
                 value={amountPaid}
                 onChange={(e) => setAmountPaid(e.target.value)}
                 className="bg-secondary font-mono"
