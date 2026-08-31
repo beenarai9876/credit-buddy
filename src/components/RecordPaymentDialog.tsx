@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,15 +28,17 @@ export function RecordPaymentDialog({
   const [amountPaid, setAmountPaid] = useState("");
   const [paymentDate, setPaymentDate] = useState("");
 
-  const reset = (c: CreditCard) => {
-    const now = new Date();
-    setPeriod(
-      now.toLocaleDateString("en-IN", { month: "short", year: "numeric" }),
-    );
-    setBillAmount(String(c.current_bill_amount || ""));
-    setAmountPaid(String(c.current_bill_amount || ""));
-    setPaymentDate(now.toISOString().slice(0, 10));
-  };
+  useEffect(() => {
+    if (open && card) {
+      const now = new Date();
+      setPeriod(
+        now.toLocaleDateString("en-IN", { month: "short", year: "numeric" }),
+      );
+      setBillAmount(String(card.current_bill_amount || ""));
+      setAmountPaid(String(card.current_bill_amount || ""));
+      setPaymentDate(now.toISOString().slice(0, 10));
+    }
+  }, [open, card]);
 
   const save = useMutation({
     mutationFn: async () => {
@@ -78,10 +80,7 @@ export function RecordPaymentDialog({
   return (
     <Dialog
       open={open}
-      onOpenChange={(o) => {
-        if (o && card) reset(card);
-        onOpenChange(o);
-      }}
+      onOpenChange={onOpenChange}
     >
       <DialogContent className="bg-card">
         <DialogHeader>
@@ -114,8 +113,8 @@ export function RecordPaymentDialog({
                 min="0"
                 step="0.01"
                 value={billAmount}
-                onChange={(e) => setBillAmount(e.target.value)}
-                className="bg-secondary font-mono"
+                disabled
+                className="bg-secondary font-mono opacity-70 cursor-not-allowed"
                 required
               />
             </div>

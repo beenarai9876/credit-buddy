@@ -118,15 +118,15 @@ export function CardsSheet({ cards }: { cards: CreditCard[] }) {
       <div className="overflow-x-auto rounded-xl border border-border bg-card">
         <table className="w-full min-w-[1100px] text-sm">
           <thead>
-            <tr className="border-b border-border bg-secondary/50 text-left text-xs uppercase tracking-wide text-muted-foreground">
+            <tr className="border-b border-border bg-secondary/50 text-center text-xs uppercase tracking-wide text-muted-foreground">
               <Th>Card Name</Th>
-              <Th className="text-right">Limit</Th>
+              <Th>Limit</Th>
               <Th>Bill Gen. Day</Th>
               <Th>Last Payment Day</Th>
-              <Th className="text-right">Used Limit</Th>
-              <Th className="text-right">Available</Th>
-              <Th className="text-right">Bill Amount</Th>
-              <Th className="text-right">30% of Limit</Th>
+              <Th>Used Limit</Th>
+              <Th>Available</Th>
+              <Th>Bill Amount</Th>
+              <Th>30% of Limit</Th>
               <Th className="w-40">Usage</Th>
               <Th className="w-28" />
             </tr>
